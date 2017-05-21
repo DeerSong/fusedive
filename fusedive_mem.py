@@ -137,6 +137,18 @@ class DropboxOperations(TmpOperations):
         # return res
         return super().write(fh, offset, buf)
 
+    def rmdir(self, inode_p, name, entry):
+        ino = self.lookup(inode_p, name).st_ino
+        tpath = self._inode2path[ino]
+        super().rmdir(inode_p, name, entry)
+        self.dbx.files_delete(tpath[:-1])
+
+    def unlink(self, inode_p, name, ctx):
+        ino = self.lookup(inode_p, name).st_ino
+        tpath = self._inode2path[ino]
+        super().unlink(inode_p, name, ctx)
+        self.dbx.files_delete(tpath)
+
 
 def main():
     parser = ArgumentParser()
