@@ -11,6 +11,7 @@ from llfuse import FUSEError
 from argparse import ArgumentParser
 import dropbox
 import subprocess
+import requests
 
 from tmpfs import Operations as TmpOperations
 from tmpfs import init_logging
@@ -167,9 +168,15 @@ def main():
     subprocess.Popen(('mkdir -p %s' % (options.tmpdir)).split())
 
     init_logging(options.debug)
-    dbx = dropbox.Dropbox(options.token)
-    operations = DropboxOperations(dbx, options.tmpdir)
 
+    pros = {
+            'http':     "socks5://127.0.0.1:1080",
+            'https':    "socks5://127.0.0.1:1080"
+            }
+    sess = dropbox.create_session(max_connections=3, proxies=pros)
+    dbx = dropbox.Dropbox(options.token, session=sess)
+    operations = DropboxOperations(dbx, options.tmpdir)
+    
     fuse_options = set(llfuse.default_options)
     fuse_options.add('fsname=dropboxfs')
     fuse_options.discard('default_permissions')
