@@ -2,7 +2,7 @@
 # fusedive
 > 存储技术基础大作业
 
-## 安装
+## 配置
 
 $ git clone https://github.com/mengcz13/fusedive.git
 
@@ -24,42 +24,55 @@ $ ./run.sh
 
 ## Ubuntu 运行问题
 
-1. No file/directory in /tmp/... 
+1.  pyenv依赖
 
-```Bash
-$ sudo apt install libfuse-dev
-```
+   参考：[http://blog.sina.com.cn/s/blog_76923bd80102w9zw.html](http://blog.sina.com.cn/s/blog_76923bd80102w9zw.html)
 
-2. fatal error : Python.h : No such file or directory
+   ```Bash
+   sudo apt-get install libbz2-dev
+   sudo apt-get install libssl-dev
+   sudo apt-get install libreadline6 libreadline6-dev
+   sudo apt-get install libsqlite3-dev
+   ```
 
-```Bash
-$ sudo apt install python3-dev
-```
+2. virtualenv依赖
 
-3. fatal error: attr/xattr.h: No such file or directory
+   - No file/directory in /tmp/... 
 
-```Bash
-$ sudo apt install libattr1-dev
-```
+   ```Bash
+   sudo apt install libfuse-dev
+   ```
 
-4. timeout : 需要翻墙,python 添加socks5包
+   - fatal error : Python.h : No such file or directory
 
-```Bash
-$ pip install requests[socks]
-```
+   ```Bash
+   sudo apt install python3-dev
+   ```
 
-修改`fusedive_mem.py`的172, 173行的socks5代理服务器地址,服务器配置参考如下
+   - fatal error: attr/xattr.h: No such file or directory
 
-```python
-proxies = {
-	    'http': 'socks5://user:pass@host:port',
-	    'https': 'socks5://user:pass@host:port'
-}
-```
+   ```Bash
+   sudo apt install libattr1-dev
+   ```
+
+3. timeout : 需要翻墙,python 添加socks5包
+
+   ```Bash
+   pip install requests[socks]
+   ```
+
+   修改`fusedive_mem.py`的172, 173行的socks5代理服务器地址,服务器配置参考如下
+
+   ```python
+   proxies = {
+       'http': 'socks5://user:pass@host:port',
+       'https': 'socks5://user:pass@host:port'
+   }
+   ```
 
 ## 开发人员：
 
-张鹿颂
-王龙涛
-孟垂正
-周先达
+周先达 加密
+张鹿颂 login
+孟垂正 同步本地 云盘文件
+王龙涛 多设备修改时的同步
