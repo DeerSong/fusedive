@@ -1,2 +1,0 @@
-mkdir -p test
-python fusedive_mem.py test gMLwmsJtyAAAAAAAAAAAatP1HHuliEf5bftZuwLwzTEiV0CqJFsqbqKeLk9FVgqj
