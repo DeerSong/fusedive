@@ -119,7 +119,7 @@ class DropboxOperations(TmpOperations):
         self.dbx.files_create_folder(self._inode2path[ino][:-1])
         return ret
     def rename(self, inode_p_old, name_old, inode_p_new, name_new, ctx):
-        assert inode_p_old==inode_p_new
+        #assert inode_p_old==inode_p_new
         super().rename(inode_p_old, name_old, inode_p_new, name_new, ctx)
         name_old = name_old.decode('utf-8')
         name_new= name_new.decode('utf-8')
