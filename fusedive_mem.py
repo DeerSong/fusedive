@@ -118,7 +118,26 @@ class DropboxOperations(TmpOperations):
         ino = ret.st_ino
         self.dbx.files_create_folder(self._inode2path[ino][:-1])
         return ret
+    def rename(self, inode_p_old, name_old, inode_p_new, name_new, ctx):
+        assert inode_p_old==inode_p_new
+        super().rename(inode_p_old, name_old, inode_p_new, name_new, ctx)
+        name_old = name_old.decode('utf-8')
+        name_new= name_new.decode('utf-8')
+        self.dbx.files_move(self._inode2path[inode_p_old]+name_old,self._inode2path[inode_p_new]+name_new)  
+        path_old = self._inode2path[inode_p_old] + name_old
+        path_new = self._inode2path[inode_p_new] + name_new
+        # print(path_old)
+        if not (path_old in self._path2inode): # it is a directory(it has a '/')
+            path_old += '/'
+            path_new += '/'
+        node = self._path2inode[path_old]
+        self._inode2path[node] = path_new
+        self._path2inode.pop(path_old)
+        self._path2inode[path_new] = node
+        # print(self._inode2path)
+        # print(self._path2inode)
 
+        print("RENAME!!!!!")
     def read(self, fh, offset, length):
         tmppath = os.path.join(self.tmpdir, self._inode2path[fh].replace('/', '-'))
         if not os.path.exists(tmppath):
