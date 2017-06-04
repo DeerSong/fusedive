@@ -176,7 +176,7 @@ def main():
     sess = dropbox.create_session(max_connections=3, proxies=pros)
     dbx = dropbox.Dropbox(options.token, session=sess)
     operations = DropboxOperations(dbx, options.tmpdir)
-    
+
     fuse_options = set(llfuse.default_options)
     fuse_options.add('fsname=dropboxfs')
     fuse_options.discard('default_permissions')
