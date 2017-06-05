@@ -57,10 +57,10 @@ class DropboxOperations(TmpOperations):
         # self._path2inode = {'/': llfuse.ROOT_INODE}
         # self._init_dropbox()
 
-    def _set_inode_path(self, inode, name):
+    def _set_inode_path(self, inode, name, mark = 0):
         self._inode2path[inode] = name
         self._path2inode[name] = inode
-        self._mark[inode] = True
+        self._mark[inode] = mark
         print("> " + str(self._path2inode[name]) + ", " + self._inode2path[inode])
 
     def _init_dropbox(self):
@@ -142,6 +142,7 @@ class DropboxOperations(TmpOperations):
                     for tno in self._inode2path:
                         # print("> " + self._inode2path[tno])
                         if (metadata.path_lower == self._inode2path[tno]):
+                            self._mark[tno] = 1
                             exist = True
                             break
                     name = fsencode(metadata.name)
@@ -152,8 +153,10 @@ class DropboxOperations(TmpOperations):
                     for foldern in path_lower[1:]:
                         try:
                             tinode = self.lookup(tinode, foldern).st_ino
+                            self._mark[tinode] = 1
                         except FUSEError:
                             tinode = self._virtual_mkdir(tinode, foldern, DEFAULT_DIR_MODE, Ctx(os.getuid(), os.getgid())).st_ino
+                            self._mark[tinode] = 1
 
                 if isinstance(metadata, dropbox.files.FileMetadata) and not exist:
                     ino, _ = self._virtual_create(tinode, name, DEFAULT_FILE_MODE, flags=None, ctx=Ctx(os.getuid(), os.getgid()))
@@ -162,6 +165,7 @@ class DropboxOperations(TmpOperations):
                     attr = Attr()
                     attr.st_size = size
                     self.setattr(ino, attr, field, None, None)
+                    self._mark[ino] = 1
                 else:
                     pass
             if y.has_more:
@@ -169,6 +173,25 @@ class DropboxOperations(TmpOperations):
             else:
                 break
 
+
+        entry = self.readdir(inode, 0)
+        while (entry):
+            a = 1
+        # ip = {}
+        # pi = {}
+        # mk = {}
+        # for inode in self._inode2path:
+            # if (self._mark[inode] != 0):
+                # path = self._inode2path[inode]
+                # ip[inode] = path
+                # pi[path] = inode
+                # mk[inode] = 0
+        # self._inode2path.clear()
+        # self._inode2path.update(ip)
+        # self._path2inode.clear()
+        # self._path2inode.update(pi)
+        # self._mark.clear()
+        # self._mark.update(mk)
 
         return super().opendir(inode, ctx)
 

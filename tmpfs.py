@@ -183,6 +183,17 @@ class Operations(llfuse.Operations):
     def opendir(self, inode, ctx):
         return inode
 
+    def listdir(self, inode, off):
+        if off == 0:
+            off = -1
+
+        cursor2 = self.db.cursor()
+        cursor2.execute("SELECT * FROM contents WHERE parent_inode=? "
+                        'AND rowid > ? ORDER BY rowid', (inode, off))
+
+        for row in cursor2:
+            yield (row['inode'])
+
     def readdir(self, inode, off):
         if off == 0:
             off = -1
