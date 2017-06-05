@@ -26,6 +26,7 @@ from __future__ import division, print_function, absolute_import
 
 import os
 import sys
+from os import fsdecode
 
 # We are running from the Python-LLFUSE source directory, put it
 # into the Python path.
@@ -138,6 +139,7 @@ class Operations(llfuse.Operations):
         return row
 
     def lookup(self, inode_p, name, ctx=None):
+        print ("lookup : " + str(inode_p) + ", " + fsdecode(name))
         if name == '.':
             inode = inode_p
         elif name == '..':
@@ -150,6 +152,7 @@ class Operations(llfuse.Operations):
             except NoSuchRowError:
                 raise(llfuse.FUSEError(errno.ENOENT))
 
+        print(inode)
         return self.getattr(inode, ctx)
 
 
@@ -183,6 +186,17 @@ class Operations(llfuse.Operations):
     def opendir(self, inode, ctx):
         return inode
 
+    def listdir(self, inode, off):
+        if off == 0:
+            off = -1
+
+        cursor2 = self.db.cursor()
+        cursor2.execute("SELECT * FROM contents WHERE parent_inode=? "
+                        'AND rowid > ? ORDER BY rowid', (inode, off))
+
+        for row in cursor2:
+            yield [row['inode'], row['name']]
+
     def readdir(self, inode, off):
         if off == 0:
             off = -1
@@ -211,6 +225,7 @@ class Operations(llfuse.Operations):
         self._remove(inode_p, name, entry)
 
     def _remove(self, inode_p, name, entry):
+        print ("remove : " + str(inode_p) + ", " + fsdecode(name))
         if self.get_row("SELECT COUNT(inode) FROM contents WHERE parent_inode=?",
                         (entry.st_ino,))[0] > 0:
             raise llfuse.FUSEError(errno.ENOTEMPTY)

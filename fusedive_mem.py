@@ -52,9 +52,19 @@ class DropboxOperations(TmpOperations):
         super().__init__()
         self.dbx = dbx
         self.tmpdir = tmpdir
-        self._inode2path = {llfuse.ROOT_INODE: '/'}
-        self._path2inode = {'/': llfuse.ROOT_INODE}
-        self._init_dropbox()
+        self._path2inode = {}
+        self._inode2path = {}
+        self._mark = {}
+        self._set_inode_path(llfuse.ROOT_INODE, '/')
+        # self._inode2path = {llfuse.ROOT_INODE: '/'}
+        # self._path2inode = {'/': llfuse.ROOT_INODE}
+        # self._init_dropbox()
+
+    def _set_inode_path(self, inode, name, mark = 0):
+        self._inode2path[inode] = name
+        self._path2inode[name] = inode
+        self._mark[inode] = mark
+        print("> " + str(self._path2inode[name]) + ", " + self._inode2path[inode])
 
     def _init_dropbox(self):
         y = self.dbx.files_list_folder('', recursive=True)
@@ -99,16 +109,105 @@ class DropboxOperations(TmpOperations):
     def _virtual_create(self, inode_parent, name, mode, flags, ctx):
         tpath = self._inode2path[inode_parent] + fsdecode(name)
         ret = super().create(inode_parent, name, mode, flags, ctx)
-        self._inode2path[ret[0]] = tpath
-        self._path2inode[tpath] = ret[0]
+        self._set_inode_path(ret[0], tpath)
+        # self._inode2path[ret[0]] = tpath
+        # self._path2inode[tpath] = ret[0]
+        # self._mark[ret[0]] = True
         return ret
 
     def _virtual_mkdir(self, inode_p, name, mode, ctx):
         tpath = self._inode2path[inode_p] + fsdecode(name) + '/'
         ret = super().mkdir(inode_p, name, mode, ctx)
-        self._inode2path[ret.st_ino] = tpath
-        self._path2inode[tpath] = ret.st_ino
+        self._set_inode_path(ret.st_ino, tpath)
+        # self._inode2path[ret.st_ino] = tpath
+        # self._path2inode[tpath] = ret.st_ino
+        # self._mark[ret.st_ino] = True
         return ret
+
+
+    def opendir(self, inode, ctx):
+        path = self._inode2path[inode]
+        y = self.dbx.files_list_folder(path[1:], recursive=False)
+        while 1:
+            for metadata in y.entries:
+                path_lower = metadata.path_lower.split('/')
+                assert path_lower[0] == ''
+                path_lower = list(map(fsencode, path_lower))
+                tinode = llfuse.ROOT_INODE
+                exist = False
+                name = None
+                size = None
+                if isinstance(metadata, dropbox.files.FolderMetadata):
+                    pass
+                else:
+                    assert isinstance(metadata, dropbox.files.FileMetadata)
+                    # print ("< " + metadata.path_lower)
+                    for tno in self._inode2path:
+                        # print("> " + self._inode2path[tno])
+                        if (metadata.path_lower == self._inode2path[tno]):
+                            self._mark[tno] = 1
+                            exist = True
+                            break
+                    name = fsencode(metadata.name)
+                    size = metadata.size
+                    path_lower = path_lower[:-1]
+
+                if len(path_lower) > 1:
+                    for foldern in path_lower[1:]:
+                        try:
+                            tinode = self.lookup(tinode, foldern).st_ino
+                            self._mark[tinode] = 1
+                        except FUSEError:
+                            tinode = self._virtual_mkdir(tinode, foldern, DEFAULT_DIR_MODE, Ctx(os.getuid(), os.getgid())).st_ino
+                            self._mark[tinode] = 1
+
+                if isinstance(metadata, dropbox.files.FileMetadata) and not exist:
+                    # name is fsencode
+                    # print ("fsencode" + name)
+                    ino, _ = self._virtual_create(tinode, name, DEFAULT_FILE_MODE, flags=None, ctx=Ctx(os.getuid(), os.getgid()))
+                    field = Field()
+                    field.update_size = True
+                    attr = Attr()
+                    attr.st_size = size
+                    self.setattr(ino, attr, field, None, None)
+                    self._mark[ino] = 1
+                else:
+                    pass
+            if y.has_more:
+                y = self.dbx.files_list_folder_continue(y.cursor)
+            else:
+                break
+
+
+        entrys = self.listdir(inode, 0)
+        for entry in entrys:
+            ine = entry[0]
+            by_name = entry[1]
+            name = fsdecode(by_name)
+            if (name == '.' or name == '..'):
+                continue
+            if (self._mark[ine] == 0):
+                print (name + " : " + str(ine))
+                mode = self.getattr(ine).st_mode
+                # ctx=Ctx(os.getuid(), os.getgid())
+                entry = super().lookup(inode, by_name)
+                super()._remove(inode, by_name, entry)
+                if (mode == DEFAULT_DIR_MODE):
+                    print ("Default dir mode")
+                    # self.rmdir(ine, by_name, ctx)
+                    # super().rmdir(ine, by_name, ctx)
+                    # super()._remove(ine, by_name, ctx)
+                elif (mode == DEFAULT_FILE_MODE):
+                    print ("Defualt file mode")
+                    # self.unlink(ine, by_name, ctx)
+                    # super._remove(ine, by_name, ctx)
+                    # super().unlink(ine, by_name, ctx)
+
+        for ine in self._inode2path:
+            self._mark[ine] = 0
+
+        return super().opendir(inode, ctx)
+
 
     def create(self, inode_parent, name, mode, flags, ctx):
         ret = self._virtual_create(inode_parent, name, mode, flags, ctx)
@@ -121,12 +220,13 @@ class DropboxOperations(TmpOperations):
         ino = ret.st_ino
         self.dbx.files_create_folder(self._inode2path[ino][:-1])
         return ret
+
     def rename(self, inode_p_old, name_old, inode_p_new, name_new, ctx):
         #assert inode_p_old==inode_p_new
         super().rename(inode_p_old, name_old, inode_p_new, name_new, ctx)
         name_old = name_old.decode('utf-8')
         name_new= name_new.decode('utf-8')
-        self.dbx.files_move(self._inode2path[inode_p_old]+name_old,self._inode2path[inode_p_new]+name_new)  
+        self.dbx.files_move(self._inode2path[inode_p_old]+name_old,self._inode2path[inode_p_new]+name_new)
         path_old = self._inode2path[inode_p_old] + name_old
         path_new = self._inode2path[inode_p_new] + name_new
         # print(path_old)
@@ -134,13 +234,16 @@ class DropboxOperations(TmpOperations):
             path_old += '/'
             path_new += '/'
         node = self._path2inode[path_old]
-        self._inode2path[node] = path_new
         self._path2inode.pop(path_old)
-        self._path2inode[path_new] = node
+        self._set_inode_path(node, path_new)
+        # self._inode2path[node] = path_new
+        # self._path2inode[path_new] = node
+        # self._mark[node] = True
         # print(self._inode2path)
         # print(self._path2inode)
 
         print("RENAME!!!!!")
+
     def read(self, fh, offset, length):
         tmppath = os.path.join(self.tmpdir, self._inode2path[fh].replace('/', '-'))
         if not os.path.exists(tmppath):
@@ -208,7 +311,7 @@ def main():
     sess = dropbox.create_session(max_connections=3, proxies=pros)
     dbx = dropbox.Dropbox(options.token, session=sess)
     operations = DropboxOperations(dbx, options.tmpdir)
-    
+
     fuse_options = set(llfuse.default_options)
     fuse_options.add('fsname=dropboxfs')
     fuse_options.discard('default_permissions')
