@@ -4,3 +4,5 @@
 .python-version
 *.sh
 test/
+py3fuse/*
+

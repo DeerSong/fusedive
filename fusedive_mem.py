@@ -18,11 +18,14 @@ from tmpfs import init_logging
 
 from os import fsencode, fsdecode
 
+from crypto import get_fernet
+
 DEFAULT_DIR_MODE = stat.S_IFDIR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | \
                    stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 DEFAULT_FILE_MODE = stat.S_IFREG | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | \
                     stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 
+fernet = ''
 
 class Ctx(object):
     def __init__(self, uid, gid):
@@ -142,6 +145,10 @@ class DropboxOperations(TmpOperations):
         tmppath = os.path.join(self.tmpdir, self._inode2path[fh].replace('/', '-'))
         if not os.path.exists(tmppath):
             self.dbx.files_download_to_file(tmppath, self._inode2path[fh])
+            with open(tmppath, 'rb') as f:
+                content = f.read()
+            with open(tmppath, 'wb') as f:
+                f.write(fernet.decrypt(content))
         with open(tmppath, 'rb') as f:
             f.read(offset)
             return f.read(length)
@@ -152,8 +159,10 @@ class DropboxOperations(TmpOperations):
             f.seek(0)
             f.seek(offset)
             res = f.write(buf)
+            # print(offset, buf)
         with open(tmppath, 'rb') as f:
-            self.dbx.files_upload(f.read(), self._inode2path[fh], mode=dropbox.files.WriteMode.overwrite)
+            f_crypted = fernet.encrypt(f.read())
+            self.dbx.files_upload(f_crypted, self._inode2path[fh], mode=dropbox.files.WriteMode.overwrite)
         # return res
         return super().write(fh, offset, buf)
 
@@ -171,6 +180,7 @@ class DropboxOperations(TmpOperations):
 
 
 def main():
+    global fernet
     parser = ArgumentParser()
     parser.add_argument('mountpoint', type=str,
                         help='Where to mount the file system')
@@ -187,6 +197,9 @@ def main():
     subprocess.Popen(('mkdir -p %s' % (options.tmpdir)).split())
 
     init_logging(options.debug)
+    dbx = dropbox.Dropbox(options.token)
+    fernet = get_fernet(options.token)
+    operations = DropboxOperations(dbx, options.tmpdir)
 
     pros = {
             'http':     "socks5://127.0.0.1:1080",

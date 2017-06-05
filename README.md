@@ -1,6 +1,4 @@
 # fusedive
-
-
 ## 配置
 测试用token: gMLwmsJtyAAAAAAAAAAAatP1HHuliEf5bftZuwLwzTEiV0CqJFsqbqKeLk9FVgqj  
 ```
@@ -27,8 +25,13 @@ sudo apt-get install libssl-dev
 sudo apt-get install libreadline6 libreadline6-dev
 sudo apt-get install libsqlite3-dev
 ```
+### 加密配置 Install Cryptography
+```
+sudo apt-get install libssl-dev  
+pip install cryptography  
+```
 ## 任务
 周先达 加密  
-张鹿颂 login  
+张鹿颂 rename + move
 孟垂正 同步本地 云盘文件  
 王龙涛 多设备修改时的同步  
