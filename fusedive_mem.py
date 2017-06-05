@@ -315,7 +315,7 @@ class DropboxOperations(TmpOperations):
         with open(tmppath, 'rb') as f:
             content = f.read()
             f_crypted = fernet.encrypt(content)
-            self.dbx.files_upload(f.read(), self._inode2path[fh], mode=dropbox.files.WriteMode.overwrite, client_modified=time)
+            self.dbx.files_upload(f_crypted, self._inode2path[fh], mode=dropbox.files.WriteMode.overwrite, client_modified=time)
         # return res
 # >>>>>>> remotes/origin/wanglt
         return super().write(fh, offset, buf)
