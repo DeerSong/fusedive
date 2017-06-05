@@ -273,13 +273,12 @@ class DropboxOperations(TmpOperations):
             f.seek(0)
             f.seek(offset)
             res = f.write(buf)
-            print('BEFORE WRITE: ', offset, buf)
+            # print('BEFORE WRITE: ', offset, buf)
         with open(tmppath, 'rb') as f:
             content = f.read()
-            print('AFTER WRITE: ', content)
+            # print('AFTER WRITE: ', content)
             f_crypted = fernet.encrypt(content)
             self.dbx.files_upload(f_crypted, self._inode2path[fh], mode=dropbox.files.WriteMode.overwrite)
-        # return res
         return super().write(fh, offset, buf)
 
     def rmdir(self, inode_p, name, entry):
