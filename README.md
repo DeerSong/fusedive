@@ -1,5 +1,5 @@
-
 # fusedive
+<<<<<<< HEAD
 > 存储技术基础大作业
 
 ## 配置
@@ -44,11 +44,14 @@ $ ./run.sh
    ```
 
    - fatal error : Python.h : No such file or directory
+=======
+>>>>>>> origin/Lusong
 
    ```Bash
    sudo apt install python3-dev
    ```
 
+<<<<<<< HEAD
    - fatal error: attr/xattr.h: No such file or directory
 
    ```Bash
@@ -73,9 +76,42 @@ $ ./run.sh
 ## 开发人员：
 
 周先达 加密
+=======
+## 配置
+测试用token: gMLwmsJtyAAAAAAAAAAAatP1HHuliEf5bftZuwLwzTEiV0CqJFsqbqKeLk9FVgqj  
+```
+git clone https://github.com/mengcz13/fusedive.git  
+pip install -r requirements.txt  
+python fusedive_mem.py /path/to/mount/point gMLwmsJtyAAAAAAAAAAAatP1HHuliEf5bftZuwLwzTEiV0CqJFsqbqKeLk9FVgqj
+```
+### socks5
+```
+$ pip install requests[socks]
+>>>>>>> origin/Lusong
 
 张鹿颂 login
 
+<<<<<<< HEAD
 孟垂正 同步本地 云盘文件
 
 王龙涛 多设备修改时的同步
+=======
+    proxies = {
+            'http': 'socks5://user:pass@host:port',
+            'https': 'socks5://user:pass@host:port'
+    }
+```
+### pyenv 依赖
+参考：http://blog.sina.com.cn/s/blog_76923bd80102w9zw.html
+```
+sudo apt-get install libbz2-dev
+sudo apt-get install libssl-dev
+sudo apt-get install libreadline6 libreadline6-dev
+sudo apt-get install libsqlite3-dev
+```
+## 任务
+周先达 加密  
+张鹿颂 login  
+孟垂正 同步本地 云盘文件  
+王龙涛 多设备修改时的同步  
+>>>>>>> origin/Lusong

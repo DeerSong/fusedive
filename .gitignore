@@ -1,5 +1,8 @@
 *.pyc
 *~
+/.idea/*
+.python-version
+*.sh
 test/
 mytoken
 type.c
