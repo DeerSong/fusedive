@@ -159,6 +159,8 @@ class DropboxOperations(TmpOperations):
                             self._mark[tinode] = 1
 
                 if isinstance(metadata, dropbox.files.FileMetadata) and not exist:
+                    # name is fsencode
+                    # print ("fsencode" + name)
                     ino, _ = self._virtual_create(tinode, name, DEFAULT_FILE_MODE, flags=None, ctx=Ctx(os.getuid(), os.getgid()))
                     field = Field()
                     field.update_size = True
@@ -174,24 +176,32 @@ class DropboxOperations(TmpOperations):
                 break
 
 
-        entry = self.readdir(inode, 0)
-        while (entry):
-            a = 1
-        # ip = {}
-        # pi = {}
-        # mk = {}
-        # for inode in self._inode2path:
-            # if (self._mark[inode] != 0):
-                # path = self._inode2path[inode]
-                # ip[inode] = path
-                # pi[path] = inode
-                # mk[inode] = 0
-        # self._inode2path.clear()
-        # self._inode2path.update(ip)
-        # self._path2inode.clear()
-        # self._path2inode.update(pi)
-        # self._mark.clear()
-        # self._mark.update(mk)
+        entrys = self.listdir(inode, 0)
+        for entry in entrys:
+            ine = entry[0]
+            by_name = entry[1]
+            name = fsdecode(by_name)
+            if (name == '.' or name == '..'):
+                continue
+            if (self._mark[ine] == 0):
+                print (name + " : " + str(ine))
+                mode = self.getattr(ine).st_mode
+                # ctx=Ctx(os.getuid(), os.getgid())
+                entry = super().lookup(inode, by_name)
+                super()._remove(inode, by_name, entry)
+                if (mode == DEFAULT_DIR_MODE):
+                    print ("Default dir mode")
+                    # self.rmdir(ine, by_name, ctx)
+                    # super().rmdir(ine, by_name, ctx)
+                    # super()._remove(ine, by_name, ctx)
+                elif (mode == DEFAULT_FILE_MODE):
+                    print ("Defualt file mode")
+                    # self.unlink(ine, by_name, ctx)
+                    # super._remove(ine, by_name, ctx)
+                    # super().unlink(ine, by_name, ctx)
+
+        for ine in self._inode2path:
+            self._mark[ine] = 0
 
         return super().opendir(inode, ctx)
 
