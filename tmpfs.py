@@ -139,7 +139,7 @@ class Operations(llfuse.Operations):
         return row
 
     def lookup(self, inode_p, name, ctx=None):
-        print ("lookup : " + str(inode_p) + ", " + fsdecode(name))
+        # print ("lookup : " + str(inode_p) + ", " + fsdecode(name))
         if name == '.':
             inode = inode_p
         elif name == '..':
@@ -152,7 +152,7 @@ class Operations(llfuse.Operations):
             except NoSuchRowError:
                 raise(llfuse.FUSEError(errno.ENOENT))
 
-        print(inode)
+        # print(inode)
         return self.getattr(inode, ctx)
 
 
@@ -225,7 +225,7 @@ class Operations(llfuse.Operations):
         self._remove(inode_p, name, entry)
 
     def _remove(self, inode_p, name, entry):
-        print ("remove : " + str(inode_p) + ", " + fsdecode(name))
+        # print ("remove : " + str(inode_p) + ", " + fsdecode(name))
         if self.get_row("SELECT COUNT(inode) FROM contents WHERE parent_inode=?",
                         (entry.st_ino,))[0] > 0:
             raise llfuse.FUSEError(errno.ENOTEMPTY)
@@ -373,6 +373,8 @@ class Operations(llfuse.Operations):
                      name, inode_p)
             raise FUSEError(errno.EINVAL)
 
+        # print("Curr Time " + time())
+        # print("Date Time " + datetime.datetime.fromtimestamp(time()))
         now_ns = int(time() * 1e9)
         self.cursor.execute('INSERT INTO inodes (uid, gid, mode, mtime_ns, atime_ns, '
                             'ctime_ns, target, rdev) VALUES(?, ?, ?, ?, ?, ?, ?, ?)',

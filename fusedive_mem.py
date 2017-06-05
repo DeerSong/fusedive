@@ -12,6 +12,7 @@ from argparse import ArgumentParser
 import dropbox
 import subprocess
 import requests
+import datetime
 
 from tmpfs import Operations as TmpOperations
 from tmpfs import init_logging
@@ -135,18 +136,32 @@ class DropboxOperations(TmpOperations):
                 path_lower = list(map(fsencode, path_lower))
                 tinode = llfuse.ROOT_INODE
                 exist = False
+                modify = False
+                modifyTime = 0
                 name = None
                 size = None
+                ino = 0
                 if isinstance(metadata, dropbox.files.FolderMetadata):
                     pass
                 else:
                     assert isinstance(metadata, dropbox.files.FileMetadata)
+                    # print (metadata.path_lower)
+                    remoteDateTime = metadata.client_modified
+                    # print(remoteDateTime)
+                    # print(time.mktime(remoteDateTime.timetuple()))
                     # print ("< " + metadata.path_lower)
                     for tno in self._inode2path:
                         # print("> " + self._inode2path[tno])
                         if (metadata.path_lower == self._inode2path[tno]):
+                            ino = tno
                             self._mark[tno] = 1
                             exist = True
+                            currTime = super().getattr(ino).st_atime_ns
+                            currDateTime = datetime.datetime.fromtimestamp(float(currTime)/1e9)
+                            # print(currDateTime)
+                            if (currDateTime < remoteDateTime):
+                                modify = True
+                                self._mark[ino] = 2
                             break
                     name = fsencode(metadata.name)
                     size = metadata.size
@@ -161,15 +176,25 @@ class DropboxOperations(TmpOperations):
                             tinode = self._virtual_mkdir(tinode, foldern, DEFAULT_DIR_MODE, Ctx(os.getuid(), os.getgid())).st_ino
                             self._mark[tinode] = 1
 
-                if isinstance(metadata, dropbox.files.FileMetadata) and not exist:
+                if isinstance(metadata, dropbox.files.FileMetadata):
                     # name is fsencode
                     # print ("fsencode" + name)
-                    ino, _ = self._virtual_create(tinode, name, DEFAULT_FILE_MODE, flags=None, ctx=Ctx(os.getuid(), os.getgid()))
+#                     if (modify):
+                        # entry = super().lookup(tinode, name)
+                        # super()._remove(tinode, name, entry)
+                        # inode_path = self._inode2path[tinode]
+                        # self._inode2path.pop(tinode)
+                        # self._path2inode.pop(inode_path)
+                        # self._mark.pop(tinode)
+                        # exist = False
+                    if (not exist):
+                        ino, _ = self._virtual_create(tinode, name, DEFAULT_FILE_MODE, flags=None, ctx=Ctx(os.getuid(), os.getgid()))
                     field = Field()
                     field.update_size = True
                     attr = Attr()
                     attr.st_size = size
                     self.setattr(ino, attr, field, None, None)
+                    # print (ino)
                     self._mark[ino] = 1
                 else:
                     pass
@@ -204,7 +229,8 @@ class DropboxOperations(TmpOperations):
                     # super().unlink(ine, by_name, ctx)
 
         for ine in self._inode2path:
-            self._mark[ine] = 0
+            if self._mark[ine] == 1:
+                self._mark[ine] = 0
 
         return super().opendir(inode, ctx)
 
@@ -212,7 +238,8 @@ class DropboxOperations(TmpOperations):
     def create(self, inode_parent, name, mode, flags, ctx):
         ret = self._virtual_create(inode_parent, name, mode, flags, ctx)
         ino = ret[0]
-        self.dbx.files_upload(b'', self._inode2path[ino], mode=dropbox.files.WriteMode.overwrite)
+        time = datetime.datetime.now()
+        self.dbx.files_upload(b'', self._inode2path[ino], mode=dropbox.files.WriteMode.overwrite, client_modified=time)
         return ret
 
     def mkdir(self, inode_p, name, mode, ctx):
@@ -246,8 +273,11 @@ class DropboxOperations(TmpOperations):
 
     def read(self, fh, offset, length):
         tmppath = os.path.join(self.tmpdir, self._inode2path[fh].replace('/', '-'))
-        if not os.path.exists(tmppath):
+        # if not os.path.exists(tmppath):
+        if (self._mark[fh] == 2) or (not os.path.exists(tmppath)):
             self.dbx.files_download_to_file(tmppath, self._inode2path[fh])
+# <<<<<<< HEAD
+            self._mark[fh] = 0
             with open(tmppath, 'rb') as f:
                 content = f.read()
             
@@ -263,6 +293,8 @@ class DropboxOperations(TmpOperations):
                     print(content)
                     print('The file may have not been crypted.')
 
+# =======
+# >>>>>>> remotes/origin/wanglt
         with open(tmppath, 'rb') as f:
             f.read(offset)
             return f.read(length)
@@ -273,12 +305,19 @@ class DropboxOperations(TmpOperations):
             f.seek(0)
             f.seek(offset)
             res = f.write(buf)
-            # print('BEFORE WRITE: ', offset, buf)
+# <<<<<<< HEAD
+#         with open(tmppath, 'rb') as f:
+#             content = f.read()
+#             f_crypted = fernet.encrypt(content)
+#             self.dbx.files_upload(f_crypted, self._inode2path[fh], mode=dropbox.files.WriteMode.overwrite)
+# =======
+        time = datetime.datetime.now()
         with open(tmppath, 'rb') as f:
             content = f.read()
-            # print('AFTER WRITE: ', content)
             f_crypted = fernet.encrypt(content)
-            self.dbx.files_upload(f_crypted, self._inode2path[fh], mode=dropbox.files.WriteMode.overwrite)
+            self.dbx.files_upload(f.read(), self._inode2path[fh], mode=dropbox.files.WriteMode.overwrite, client_modified=time)
+        # return res
+# >>>>>>> remotes/origin/wanglt
         return super().write(fh, offset, buf)
 
     def rmdir(self, inode_p, name, entry):
