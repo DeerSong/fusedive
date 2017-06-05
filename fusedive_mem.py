@@ -19,7 +19,7 @@ from tmpfs import init_logging
 from os import fsencode, fsdecode
 
 from crypto import get_fernet
-
+import cryptography
 DEFAULT_DIR_MODE = stat.S_IFDIR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | \
                    stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 DEFAULT_FILE_MODE = stat.S_IFREG | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | \
@@ -250,8 +250,19 @@ class DropboxOperations(TmpOperations):
             self.dbx.files_download_to_file(tmppath, self._inode2path[fh])
             with open(tmppath, 'rb') as f:
                 content = f.read()
-            with open(tmppath, 'wb') as f:
-                f.write(fernet.decrypt(content))
+            
+            # it will create empty placeholder file when opening
+            # fusedive using GUI file system the first time
+            if content != b'':
+                try:
+                    crypted = fernet.decrypt(content)
+                    with open(tmppath, 'wb') as f:
+                        f.write(crypted)
+                except cryptography.fernet.InvalidToken:
+                    print('BAD TOKEN!')
+                    print(content)
+                    print('The file may have not been crypted.')
+
         with open(tmppath, 'rb') as f:
             f.read(offset)
             return f.read(length)
